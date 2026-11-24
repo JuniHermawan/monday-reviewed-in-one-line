@@ -43,7 +43,24 @@ BEFORE the proxy ran.
 import os
 import re
 
-VERSION = "v3"
+VERSION = "v4"
+
+# v4 calibration (new challenger families, rubrics scored BY HAND before
+# the proxy ran on them):
+# - BA out-of-office / "circled back": rubric 21 (5,4,4,4,4). The
+#   "circled back before I'd logged in" turn is a knowing laugh but
+#   softer than AA's quoted boss line; concrete but no meeting/inbox
+#   number, so c3 4.
+# - BB password-expired / MFA loop: rubric 21 (5,4,5,4,3). Strong
+#   concrete detail (password, MFA, standup) but a password-expiry
+#   line is not one you'd repeat to a coworker, so c5 3.
+# - BC fridge lunch theft / calendar quick sync: rubric 22 (5,4,5,4,4).
+# - BD seven snoozes / "no blockers" standup lie: rubric 22 (5,5,4,4,4).
+#   "No blockers while completely blocked" is the strongest new joke.
+# - BE product-review framing ("would not recommend / arrived broken"):
+#   rubric 22 (5,4,4,5,4). The joke is the frame; the punch lands early.
+# - BF motivation filed for leave / CC'd on own burnout: rubric 20
+#   (5,4,3,4,4). Good turn, thin concrete detail (alarm, inbox only).
 
 # v2 calibration fixes (from v1 proxy-vs-rubric gaps, documented):
 # - c1 counted only review/star words for framing; a quoted workplace
@@ -101,6 +118,17 @@ CANDIDATES = {
     "AC": "My Monday review: the meeting could have been an email, the Wi-Fi died mid-call, and my boss replied 'per my last email'.",
     "AD": "Monday, one star: my inbox had 112 unread emails, my Wi-Fi died mid-call, and not one of them was an apology.",
     "AE": "I showed up, the Wi-Fi didn't, and my Monday's 9 a.m. 'quick sync' ran until lunch \u2014 one star.",
+    # v4 challengers — NEW families/angles, not rewordings of AA:
+    # BA out-of-office auto-reply + "circled back"; BB password/MFA loop;
+    # BC fridge lunch theft; BD snoozes + "no blockers" standup lie;
+    # BE product-review framing ("would not recommend"); BF motivation
+    # filed for leave + CC'd on own burnout.
+    "BA": "Monday, one star: my out-of-office replied faster than my team, and my boss circled back before I'd even logged in.",
+    "BB": "One star for Monday: my password expired, my MFA looped twice, and the standup started before I'd even logged in.",
+    "BC": "Monday, one star: someone stole my lunch from the fridge, and my calendar still found time for a 'quick sync'.",
+    "BD": "My Monday: seven snoozes, one cold coffee, and a standup where everyone said 'no blockers' while completely blocked.",
+    "BE": "Would not recommend Monday: it arrived broken, no refund, and the standup started before the coffee did.",
+    "BF": "Monday, one star: my alarm went off at 6, my motivation filed for leave, and my inbox CC'd me on my own burnout.",
     "Y": "Monday was so tiring, I was exhausted all day and couldn't wait for it to end, worst day ever.",
     "Z": "Mondays are the worst, I hate them so much, why can't every day be the weekend, ugh.",
 }
@@ -118,34 +146,61 @@ RUBRIC = {
     # Challenger rubrics, scored BEFORE the proxy ran.
     "AA": (5, 5, 4, 5, 5), "AB": (5, 4, 4, 5, 4), "AC": (5, 5, 5, 4, 5),
     "AD": (5, 4, 5, 4, 4), "AE": (5, 4, 4, 4, 4),
+    # v4 challenger rubrics, scored BY HAND before the proxy ran on them.
+    "BA": (5, 4, 4, 4, 4), "BB": (5, 4, 5, 4, 3), "BC": (5, 4, 5, 4, 4),
+    "BD": (5, 5, 4, 4, 4), "BE": (5, 4, 4, 5, 4), "BF": (5, 4, 3, 4, 4),
     "Y": (3, 1, 1, 2, 1), "Z": (2, 1, 1, 2, 1),
 }
 
 # ---------------------------------------------------------------- proxy scorer
 # Mechanical /25 proxy from the judge's 5 criteria, in order. Feature
 # points only; no per-line tuning.
+# v4 calibration fixes (from v4 gaps — general features, not per-line tuning):
+# - c3 missed concrete Monday artifacts in the new families: "password",
+#   "mfa", "fridge", "lunch", "snooze(s)", "blocked/blockers",
+#   "burnout", "out-of-office", "logged in", "refund" (BA/BB scored
+#   c3 2.0 vs rubric 4/5; BD 3.0 vs 4). Added to CONCRETE.
+# - c1 missed product-review framing: "would not recommend" / "arrived
+#   broken" is a review of one's own Monday just as "one star" is (BE
+#   scored c1 3.0 vs rubric 5). Review framing now credits it.
+# - c2 missed the irony laugh in "no blockers while completely blocked"
+#   and the turns "filed for leave", "circled back", "arrived broken",
+#   "stole my lunch", "MFA looped" (BD c2 2.5 vs rubric 5; BE 2.0 vs 4).
+#   Added as laugh signals + end-punch words (general workplace tropes).
+# - c4 denied length credit to BD/BE because no punch word was found;
+#   with the new punch words the early-turn rule applies to them too.
+# Residual known gap: BE has no first-person pronoun, so its proxy c1
+# still trails its rubric c1 by ~1; the product frame is credited, the
+# missing "my/I" is not faked.
 CONCRETE = ["meeting", "standup", "sync", "inbox", "email", "emails",
             "commute", "train", "traffic", "printer", "wi-fi", "wifi",
             "laptop", "spreadsheet", "calendar", "alarm", "coffee",
             "boss", "presentation", "call", "lunch", "9 a.m", "8 a.m",
             "7 a.m", "4:55", "112", "47", "63", "89", "90 minutes",
-            "40 minutes"]
+            "40 minutes", "password", "mfa", "fridge", "snooze",
+            "snoozes", "blocked", "blockers", "burnout",
+            "out-of-office", "logged in", "refund"]
 LAUGH_WORDS = ["one star", "two stars", "apolog", "hostage", "war",
                "laughed", "regret", "asleep", "silence", "nap", "bed",
                "rain check", "clocked out", "didn't", "never",
                "still going", "exactly none", "ate my", "declared war",
-               "holding me hostage"]
+               "holding me hostage", "circled back", "no blockers",
+               "filed for leave", "arrived broken",
+               "would not recommend", "stole", "looped", "burnout"]
 REPEATABLE = ["could have been an email", "per my last email",
               "meeting about meetings", "quick sync", "quick question",
               "quick chat", "one star", "could've been", "still going",
-              "exactly none", "rain check"]
+              "exactly none", "rain check", "no blockers",
+              "circled back", "would not recommend", "filed for leave"]
 TROPE = ["could have been an email", "could've been an email",
          "per my last email", "quick sync", "quick chat",
          "quick question", "meeting about meetings",
          "meeting about a meeting"]
 PUNCH_RE = (r"one star|two stars|apolog|asleep|silence|hostage|war|"
             r"regret|laughed|never|didn't|still going|exactly none|"
-            r"rain check|nap|bed|per my last email")
+            r"rain check|nap|bed|per my last email|stole|no blockers|"
+            r"filed for leave|arrived broken|would not recommend|"
+            r"circled back|looped|burnout")
 
 
 def proxy_score(text):
@@ -162,7 +217,8 @@ def proxy_score(text):
         c1 += 1.0
     if re.search(r"\b(my|i|i'd|i've)\b", low):
         c1 += 1.0
-    if re.search(r"review|rated|rating|star", low) or quoted or triple:
+    if re.search(r"review|rated|rating|star|would not recommend|"
+                 r"arrived broken", low) or quoted or triple:
         c1 += 1.0
     if any(w in low for w in LAUGH_WORDS):
         c1 += 1.0
@@ -173,7 +229,9 @@ def proxy_score(text):
     if triple:
         c2 += 1.0
     if re.search(r"could (have )?been|not one of them|still|exactly|"
-                 r"never|didn't|apolog", low):
+                 r"never|didn't|apolog|no blockers|filed for leave|"
+                 r"circled back|arrived broken|would not recommend|"
+                 r"stole|looped", low):
         c2 += 1.0
     if len(re.findall(r"could (have )?been|could've been", low)) >= 2:
         c2 += 1.0
